@@ -1,16 +1,28 @@
 CC = gcc
+RM = mv -f --backup=t
 CFLAGS = -Wall
-TARGET = libclisp.so
 
-SRC_DIR = src
+LIBCLISP_OUT = libclisp.so
+
+SRC_DIR = libclisp
 BIN_DIR = bin
 INC_DIR = include
 TRASH_DIR = trash
+TOOL_DIR = tools
+
+RM += -t $(TRASH_DIR)
 
 INCLUDE = -I$(INC_DIR)
-SOURCES = $(wildcard src/*.c)
-OBJECTS = $(SOURCES:.c=.o)
 LIBS = 
+
+LIB_SOURCES = $(wildcard $(SRC_DIR)/*.c)
+LIB_OBJECTS = $(SOURCES:.c=.o)
+
+CLISPI_SOURCES = $(wildcard $(TOOL_DIR)/clispi/*.c)
+CLISPI_OBJECTS = $(CLISPI_SOURCES:.c=.o)
+
+CLISP_SOURCES = $(wildcard $(TOOL_DIR)/clisp/*.c)
+CLISP_OBJECTS = $(CLISP_SOURCES:.c=.o)
 
 OPTIMIZATION = -O3
 PEDANTIC = -ansi -pedantic
@@ -30,25 +42,28 @@ CFLAGS += $(INCLUDE)
 CFLAGS += $(OPTIMIZATION)
 
 
-all: $(TARGET) clisp clispi
+all: clisp #clispi
 
-$(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) -shared -o $(BIN_DIR)/$@ $^ $(LIBS)
+libclisp: $(LIB_OBJECTS)
+	$(CC) $(CFLAGS) -shared -o $(BIN_DIR)/$(LIBCLISP_OUT) $^ $(LIBS)
 
-clisp: $(TARGET)
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/clisp\
-             tools/clisp/*.c -l$(BIN)/$(TARGET)
+clisp: libclisp $(CLISP_OBJECTS)
+	$(CC) $(CFLAGS) -o $(BIN_DIR)/$@ $^ -l$(BIN)/$(LIBCLISP_OUT)
 
-clispi: $(TARGET)
-	$(CC) $(CFLAGS) -o $(BIN_DIR)/clispi\
-             tools/clispi/*.c -l$(BIN)/$(TARGET)
+clispi: libclisp $(CLISPI_OBJECTS)
+	$(CC) $(CFLAGS) -o $(BIN_DIR)/$@ $^ -l$(BIN)/$(LIBCLISP_OUT)
 
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $<
 
 clean:
-	mv $(OBJECTS) $(TRASH_DIR)
-	mv $(BIN_DIR)/* $(TRASH_DIR)
+	$(RM) $(LIB_OJECTS)
+	$(RM) $(CLISP_OBJECTS)
+	$(RM) $(CLISPI_OBJECTS)
+	$(RM) $(BIN_DIR)/*
+
+
+rebuild: clean all
 
 .PHONEY : clean
