@@ -4,6 +4,9 @@
 
 typedef struct _Function Function;
 typedef struct _Atom Atom;
+typedef struct _List List;
+typedef struct _Scope Scope;
+typedef struct _Program Program;
 
 typedef struct _HtabNode HtabNode;
 typedef struct _Htab Htab;
