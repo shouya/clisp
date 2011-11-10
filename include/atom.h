@@ -11,6 +11,7 @@
 #define ATOM_TYPE_BOOLEAN   4
 #define ATOM_TYPE_LIST      5
 #define ATOM_TYPE_FUNCTION  6
+#define ATOM_TYPE_TOKEN     7
 
 struct _Atom {
   int type;
@@ -22,6 +23,7 @@ struct _Atom {
     char* boolean;        /* 4 */
     List* list;           /* 5 */
     Function* function;   /* 6 */
+    char* token;          /* 7 */
   };
 };
 
@@ -29,6 +31,13 @@ Atom* atom_new(void);
 void atom_destroy(Atom* a);
 Atom* atom_duplicate(const Atom* a);
 void atom_reset(Atom* a);
+/*
+  return value:
+   -1:  symbol not found in scope
+   -2:  atom is not token type
+    0:  atom seted to reference of special token
+ */
+int atom_token_to_refrence(Atom* a, Scope* scope);
 
 Atom* atom_reference(Atom* ref);
 
@@ -42,8 +51,11 @@ Atom* atom_new_boolean(char boolean);
 Atom* atom_new_list(const List* list);
 /* func will be duplicated */
 Atom* atom_new_function(const Function* func);
+/* token name will be duplicated */
+Atom* atom_new_token(const char* token_name);
 
 void atom_destroy_string(char* str);
+void atom_destroy_token(char* token);
 void atom_destroy_function(Function* func);
 void atom_destroy_list(List* list);
 
@@ -54,10 +66,31 @@ void atom_set_string(Atom* atom, const char* str);
 void atom_set_boolean(Atom* atom, char boolean);
 void atom_set_list(Atom* atom, const List* list);
 void atom_set_function(Atom* atom, const Function* func);
+void atom_set_token(Atom* atom, const char* token_name);
 
 /* will duplicate new_val */
 void atom_set_atom(Atom* atom, const Atom* new_val);
+void atom_set_reference(Atom* atom, const Atom* reference);
 
-Atom* atom_parse_string(const Scope* scope, const char* str);
+
+/* this group of functions DO NOT allocate new memory */
+/*
+  return  0 for successed,
+         -1 for incompact type;
+ */
+int atom_get_int(Atom* atom, long* i32);
+int atom_get_uint(Atom* atom, unsigned* ui32);
+int atom_get_string(Atom* atom, char** string);
+int atom_get_boolean(Atom* atom, char* boolean);
+int atom_get_list(Atom* atom, List** list);
+int atom_get_function(Atom* atom, Function** function);
+int atom_get_token(Atom* atom, char** token_name);
+
+int atom_eval(Atom* atom, Scope* scope);
+
+Atom* atom_parse_string(const char* str);
+
+void atom_show(Atom* atom, char** str);
+void atom_show_debug(Atom* atom, char** str);
 
 #endif /* _atom_h_ */

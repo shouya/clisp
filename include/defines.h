@@ -2,6 +2,13 @@
 #ifndef _defines_h_
 #define _defines_h_
 
+/* frequency used headers */
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+/* type definitions */
+
 typedef struct _Function Function;
 typedef struct _Atom Atom;
 typedef struct _List List;

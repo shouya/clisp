@@ -3,15 +3,30 @@
 #define _function_h_
 
 #include <defines.h>
-/*#define FUNCTION_NAME_ANONYMOUS ((char*)0L)*/
+#include <setjmp.h>
+
+#define FUNC_TYPE_INTERNAL     1
+#define FUNC_TYPE_USERDEFINED  2
 
 struct Function_ {
-  char* args;
-  int n_insts;
-  Atom* insts;
-  /* todo: content of a function */
+  int n_args;
+  char** args;
+  int type;
+  union {
+    
+  };
 };
 
+typedef Atom* (*FunctionCallback)(List* args,
+                                  Scope* scope,
+                                  char** error_message,
+                                  jmp_buf trace_point);
+
+
+#define RaiseError(errmsg) do {                 \
+    *error_message = errmsg;                    \
+    long_jmp(trace_point);                      \
+  } while (0)
 
 /*
   arg_type type character instruction
@@ -42,7 +57,7 @@ int function_parse(
   returns zero if function avalible else -1 will be returned.
  */
 int function_check(
-  Function* function,
+  Function* function
   );
 
 
