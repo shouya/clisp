@@ -4,38 +4,32 @@
 
 #include <defines.h>
 
-#define HTAB_SI_SIZE 2048
+#define HTAB_SIZE 2048
 
-/* string to int hash */
-struct _Htab_SI_Node {
+typedef void (*HtabEach)(const char* k, void* v);
+typedef void (*HtabFreeHandler)(void* v);
+
+
+/* string to pointer hash */
+struct _HtabNode {
   char* key;
-  int value;
-  _Htab_SI_Node* next;
+  void* value;
 };
-struct _Htab_SI {
+struct _Htab {
   int n_nodes;
-  Htab_SI_Node* nodes[HTAB_SI_SIZE];
+  int size;
+  HtabFreeHandler free_handler;
+  HtabNode** nodes;
 };
 
-typedef void (*HTAB_SI_EACH)(const char* k, int* v);
+Htab* htab_new(int size, HtabFreeHandler free_handler);
+void htab_destroy(Htab* htab);
 
-Htab_SI* htab_si_new(void);
-void htab_si_destroy(Htab_SI* htab);
+int htab_set(Htab* htab, const char* k, void* v); /* it won't duplicate v */
+int htab_del(Htab* htab, const char* k);
 
-int htab_si_set(Htab_SI* htab, const char* k, int v);
-int htab_si_del(Htab_SI* htab, const char* k);
-
-int htab_si_find(Htab_SI* htab, const char* key, int* value);
-void htab_si_foreach(Htab_SI* htab, HTAB_SI_EACH each);
-
-
-/* name-atom hash table */
-struct _Htab_NA_Node {
-  char* name;
-  Atom* atom;
-  _Htab_NA_Node* next;
-};
-
+int htab_find(Htab* htab, const char* key, void* value);
+void htab_foreach(Htab* htab, HtabEach each);
 
 unsigned long htab_string_hash(const char* key, unsigned long hashsize);
 

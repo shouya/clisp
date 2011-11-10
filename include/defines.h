@@ -5,8 +5,8 @@
 typedef struct _Function Function;
 typedef struct _Atom Atom;
 
-typedef struct _Htab_SI_Node Htab_SI_Node;
-typedef struct _Htab_SI Htab_SI;
+typedef struct _HtabNode HtabNode;
+typedef struct _Htab Htab;
 
 
 
