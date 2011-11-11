@@ -11,14 +11,14 @@ struct _Scope {
 */
 
 Scope* scope_new(Scope* parent) {
-  Scope* s = calloc(sizeof(Scope));
+  Scope* s = calloc(1, sizeof(Scope));
   s->parent = parent;
-  s->symtab = htab_new(SCOPE_SYMBOL_HASH_SIZE, &atom_destroy);
+  s->symtab = htab_new(SCOPE_SYMBOL_HASH_SIZE, (HtabFreeHandler)&atom_destroy);
   return s;
 }
 
 void scope_destroy(Scope* scope) {
-  htab_destroy(s->symtab);
+  htab_destroy(scope->symtab);
   free(scope);
 }
 
@@ -41,9 +41,9 @@ int scope_del_symbol(Scope* s, const char* name) {
    returns -1 if symbol don't exists, else return 0.
  */
 
-int scope_find_symbol(Scope* s, const char* name, Atom** atom_ptr) {
+int scope_find_symbol(const Scope* s, const char* name, Atom** atom_ptr) {
   Atom* atom;
-  if (htab_find(s->symtab, name, atom) == 0) {
+  if (htab_find(s->symtab, name, (void**)&atom) == 0) {
     if (atom_ptr != NULL)
       *atom_ptr = atom;
     return 0;

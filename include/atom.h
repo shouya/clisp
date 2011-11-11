@@ -29,7 +29,9 @@ struct _Atom {
 
 Atom* atom_new(void);
 void atom_destroy(Atom* a);
+
 Atom* atom_duplicate(const Atom* a);
+
 void atom_reset(Atom* a);
 /*
   return value:
@@ -39,7 +41,7 @@ void atom_reset(Atom* a);
  */
 int atom_token_to_refrence(Atom* a, Scope* scope);
 
-Atom* atom_reference(Atom* ref);
+Atom* atom_reference(const Atom* ref);
 
 Atom* atom_new_unknow(void);
 Atom* atom_new_int(long value);
@@ -90,7 +92,7 @@ int atom_eval(Atom* atom, Scope* scope);
 
 Atom* atom_parse_string(const char* str);
 
-void atom_show(Atom* atom, char** str);
-void atom_show_debug(Atom* atom, char** str);
+void atom_show(const Atom* atom, char** str);
+void atom_show_debug(const Atom* atom, char** str);
 
 #endif /* _atom_h_ */

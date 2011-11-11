@@ -58,8 +58,39 @@ void atom_reset(Atom* a) {
   }
 }
 
-Atom* atom_duplicate(Atom* a) {
-  /** TODO **/
+Atom* atom_duplicate(const Atom* a) {
+  if (a->is_ref) {
+    return atom_reference(a);
+  }
+
+  switch (a->type) {
+  case ATOM_TYPE_UNKOWN:
+    return atom_new_unknow();
+    break;
+
+    /* value types */
+  case ATOM_TYPE_INT:
+    return atom_new_int(*a->i32);
+  case ATOM_TYPE_UINT:
+    return atom_new_uint(*a->ui32);
+  case ATOM_TYPE_BOOLEAN:
+    return atom_new_boolean(*a->boolean);
+
+    /* reference types */
+  case ATOM_TYPE_STRING:
+    return atom_new_string(a->string);
+  case ATOM_TYPE_LIST:
+    return atom_new_list(a->list);
+  case ATOM_TYPE_FUNCTION:
+    return atom_new_function(a->function);
+  case ATOM_TYPE_TOKEN:
+    return atom_new_token(a->token);
+
+  default: /* unkown */
+    break;
+  }
+
+  return NULL;
 }
 
 int atom_token_to_refrence(Atom* a, Scope* scope) {
@@ -73,9 +104,9 @@ int atom_token_to_refrence(Atom* a, Scope* scope) {
   return -1;
 }
 
-Atom* atom_reference(Atom* ref) {
+Atom* atom_reference(const Atom* ref) {
   Atom* a = atom_new();
-  atom_set_reference(ref);
+  atom_set_reference(a, ref);
   return a;
 }
 
@@ -90,36 +121,36 @@ Atom* atom_new_int(long value) {
 }
 Atom* atom_new_uint(unsigned long value) {
   Atom* a = atom_new();
-  atom_set_uint(value);
+  atom_set_uint(a, value);
   return a;
 }
 /* str will be duplicate  */
 Atom* atom_new_string(const char* str) {
   Atom* a = atom_new();
-  atom_set_uint(str);
+  atom_set_string(a, str);
   return a;
 }
 Atom* atom_new_boolean(char boolean) {
   Atom* a = atom_new();
-  atom_set_boolean(boolean);
+  atom_set_boolean(a, boolean);
   return a;
 }
 /* list will be duplicated */
 Atom* atom_new_list(const List* list) {
   Atom* a = atom_new();
-  atom_set_list(list);
+  atom_set_list(a, list);
   return a;
 }
 /* func will be duplicated */
 Atom* atom_new_function(const Function* func) {
   Atom* a = atom_new();
-  atom_set_function(func);
+  atom_set_function(a, func);
   return a;
 }
 /* token name will be duplicated */
 Atom* atom_new_token(const char* token_name) {
   Atom* a = atom_new();
-  atom_set_token(token_name);
+  atom_set_token(a, token_name);
   return a;
 }
 
@@ -133,6 +164,10 @@ void atom_destroy_token(char* token) {
 void atom_destroy_function(Function* func) {
   function_destroy(func);
 }
+void atom_destroy_list(List* list) {
+  list_destroy(list);
+}
+
 
 void atom_set_unkown(Atom* atom) {
   atom_reset(atom);
@@ -181,7 +216,7 @@ void atom_set_function(Atom* atom, const Function* func) {
 void atom_set_token(Atom* atom, const char* token_name) {
   atom_reset(atom);
   atom->type = ATOM_TYPE_TOKEN;
-  atom->token = malloc(strlen(str) + 1);
+  atom->token = malloc(strlen(token_name) + 1);
   strcpy(atom->token, token_name);
 }
 
@@ -193,7 +228,7 @@ void atom_set_atom(Atom* atom, const Atom* new_val) {
 }
 
 void atom_set_reference(Atom* a, const Atom* ref) {
-  atom_reset(atom);
+  atom_reset(a);
   a->type = ref->type;
   switch (a->type) {
   case ATOM_TYPE_UNKOWN: break;
@@ -213,13 +248,13 @@ void atom_set_reference(Atom* a, const Atom* ref) {
 int atom_get_int(Atom* atom, long* i32) {
   switch (atom->type) {
   case ATOM_TYPE_INT:
-    *i32 = atom->i32;
+    *i32 = *atom->i32;
     break;
   case ATOM_TYPE_UINT:
-    *i32 = atom->ui32;
+    *i32 = *atom->ui32;
     break;
   case ATOM_TYPE_BOOLEAN:
-    *i32 = atom->boolean;
+    *i32 = *atom->boolean;
     break;
   default:
     return -1;
@@ -230,13 +265,13 @@ int atom_get_int(Atom* atom, long* i32) {
 int atom_get_uint(Atom* atom, unsigned* ui32) {
   switch (atom->type) {
   case ATOM_TYPE_INT:
-    *ui32 = atom->i32;
+    *ui32 = *atom->i32;
     break;
   case ATOM_TYPE_UINT:
-    *ui32 = atom->ui32;
+    *ui32 = *atom->ui32;
     break;
   case ATOM_TYPE_BOOLEAN:
-    *ui32 = atom->boolean;
+    *ui32 = *atom->boolean;
     break;
   default:
     return -1;
@@ -327,7 +362,10 @@ int atom_eval(Atom* atom, Scope* scope) {
     break;
 
   case ATOM_TYPE_LIST: {
-    Atom* result = list_eval(atom->list, scope);
+    Atom* result;
+    if (list_eval(atom->list, scope, &result) != 0) {
+      return 0; /* cannot evaluate list */
+    }
     atom_set_atom(atom, result);
   } break;
   case ATOM_TYPE_TOKEN:
@@ -341,28 +379,39 @@ int atom_eval(Atom* atom, Scope* scope) {
 
 
 Atom* atom_parse_string(const char* str) {
-  char* tokenval;
+  const char* const str_end = str + strlen(str) - 1;
+  while (isspace(*str)) ++str;
 
   /* parse string */
   do {
-    char* strval = malloc(sizeof(char) * MAX_STRING_LENGTH);
-    /* i don't know how to implement a dynamic width check in efficient way */
-    if (sscanf(str, "\"%4095s\"", strval)) {
-      Atom* a = atom_new_string(strval);
-      free(strval);
-      return a;
+    char is_str = 0;
+    char* strval;
+    Atom* ret;
+
+    if (*str == '"' && *str_end == '"') {
+      is_str = 1;
     }
+
+    if (!is_str) break;
+
+    strval = malloc(sizeof(char) * MAX_STRING_LENGTH);
+    memcpy(strval, str + 1, str_end - str - 1);
+    strval[str_end - str] = '\0';
+
+    ret = atom_new_string(strval);
     free(strval);
+    return ret;
+    
   } while (0);
 
   /* parse integer */
   do {
     long ival;
     unsigned long uival;
-    if (sscanf(str, "%i", &ival)) {
+    if (sscanf(str, "%li", &ival)) {
       return atom_new_int(ival);;
     }
-    if (sscanf(str, "%u", &uival)) {
+    if (sscanf(str, "%lu", &uival)) {
       return atom_new_uint(uival);
     }
   } while (0);
@@ -371,17 +420,17 @@ Atom* atom_parse_string(const char* str) {
   do {
     const char* p = str;
     char booltrue, boolfalse;
-    while (isspace(*p) && ++p) {}
+
     booltrue =
-      strcmp(p, "t") || strcmp(p, "T") ||
-      strcmp(p, "true") || strcmp(p, "True") || strcmp(p, "TRUE") ||
-      strcmp(p, "yes") || strcmp(p, "Yes") || strcmp(p, "YES");
+      strcmp(p, "t")==0 || strcmp(p, "T")==0 ||
+      strcmp(p, "true")==0 || strcmp(p, "True")==0 || strcmp(p, "TRUE")==0 ||
+      strcmp(p, "yes")==0 || strcmp(p, "Yes")==0 || strcmp(p, "YES")==0;
 
     boolfalse =
-      strcmp(p, "nil") || strcmp(p, "Nil") || strcmp(p, "NIL") ||
-      strcmp(p, "false") || strcmp(p, "False") || strcmp(p, "FALSE") ||
-      strcmp(p, "no") || strcmp(p, "No") || strcmp(p, "NO") ||
-      strcmp(p, "()");
+      strcmp(p, "nil")==0 || strcmp(p, "Nil")==0 || strcmp(p, "NIL")==0 ||
+      strcmp(p, "false")==0 || strcmp(p, "False")==0 || strcmp(p, "FALSE")==0 ||
+      strcmp(p, "no")==0 || strcmp(p, "No")==0 || strcmp(p, "NO")==0 ||
+      strcmp(p, "()")==0;
 
     if (booltrue || boolfalse) {
       return atom_new_boolean(booltrue);
@@ -390,26 +439,66 @@ Atom* atom_parse_string(const char* str) {
 
   /* parse list & function */
   do {
-    char *strlst = malloc(sizeof(char) * MAX_LIST_STRING_LENGTH);
-    /* so here */
-    if (sscanf(str, "'(%8191s)", strlst) ||
-        sscanf(str, "(quote%*[ ](%8192s)%*[ ])", strlst)) {
-      List* l = list_parse_string(strlst);
-      Atom* a;
-      l->is_quoted = 1;
-      a = atom_new_list(l);
-      list_destroy(l);
-      free(str);
-      return a;
-    } else if (sscanf(str, "(%8191s)", strlst)) {
-      List* l = list_parse_string(strlst);
-      Atom* a;
-      l->is_quoted = 0;
-      a = atom_new_list(l);
-      list_destroy(l);
-      free(str);
-      return a;
+    char *strlst;
+    List* list;
+    Atom* ret;
+    char is_list = 0, in_str = 0, is_quoted = 0;
+    int bracket_stack = 0;
+    
+    const char* p = NULL, *start = str;
+ 
+    if (*str == '(') {
+      is_list = 1;
+      bracket_stack = 1;
+      is_quoted = 0;
+      start = p = str + 1;
+    } else if (strncmp(str, "'(", 2) == 0) {
+      is_list = 1;
+      bracket_stack = 1;
+      is_quoted = 1;
+      start = p = str + 2;
     }
+
+    if (!is_list) {
+      break;
+    }
+
+    strlst = malloc(sizeof(char) * MAX_LIST_STRING_LENGTH);
+
+    for (;;) {
+      if (p > str_end) {
+        free(strlst);
+        strlst = NULL;
+        break;
+      }
+
+      if (*p == '(') {
+        !in_str ? ++bracket_stack : 0;
+      } else if (*p == ')') {
+        !in_str ? --bracket_stack : 0;
+      } else if (*p == '"') {
+        in_str ^= 1;
+      }
+
+      if (bracket_stack == 0) {
+        break;
+      }
+      ++p;
+    }
+
+    if (strlst == NULL) { break; }
+
+    memcpy(strlst, start, p - start);
+    strlst[p-start] = '\0';
+
+    list = list_parse_string(strlst);
+    free(strlst);
+    list->is_quoted = is_quoted;
+    ret = atom_new_list(list);
+    list_destroy(list);
+    
+    return ret;
+
   } while (0);
 
   /* parse references */ /*
@@ -431,7 +520,7 @@ Atom* atom_parse_string(const char* str) {
 
   /* parse token */
   do {
-    while (isspace(*str) && ++str) {}
+    while (isspace(*str)) ++str;
 
     return atom_new_token(str);
 
@@ -443,26 +532,26 @@ Atom* atom_parse_string(const char* str) {
 
 
 
-void atom_show(Atom* atom, char** str) {
+void atom_show(const Atom* atom, char** str) {
   char* buf = calloc(MAX_SHOW_BUFFER_SIZE, sizeof(char));
   switch (atom->type) {
   case ATOM_TYPE_UNKOWN:
     break;
   case ATOM_TYPE_INT: {
-    snprintf(buf, MAX_SHOW_BUFFER_SIZE, "%+d", atom->i32);
+    snprintf(buf, MAX_SHOW_BUFFER_SIZE, "%+ld", *atom->i32);
   } break;
   case ATOM_TYPE_UINT: {
-    snprintf(buf, MAX_SHOW_BUFFER_SIZE, "%u", atom->ui32);
+    snprintf(buf, MAX_SHOW_BUFFER_SIZE, "%lu", *atom->ui32);
   } break;
   case ATOM_TYPE_BOOLEAN: {
     snprintf(buf, MAX_SHOW_BUFFER_SIZE, "%s",   \
-             atom->boolean ? "t" : "nil");
+             *atom->boolean ? "t" : "nil");
   } break;
   case ATOM_TYPE_STRING: {
     snprintf(buf, MAX_SHOW_BUFFER_SIZE, "\"%s\"", atom->string);
   } break;
   case ATOM_TYPE_FUNCTION: {
-    snprintf(buf, MAX_SHOW_BUFFER_SIZE, "FUNCTION(%p)", atom);
+    snprintf(buf, MAX_SHOW_BUFFER_SIZE, "FUNCTION(%p)", atom->function);
   } break;
   case ATOM_TYPE_LIST: {
     char* lst_shw;
@@ -479,7 +568,7 @@ void atom_show(Atom* atom, char** str) {
   }
 
   
-  *str = malloc(strlen(buf) + 1);
+  *str = malloc(sizeof(char) * (strlen(buf)+1));
   strcpy(*str, buf);
 
   free(buf);
@@ -488,7 +577,7 @@ void atom_show(Atom* atom, char** str) {
 
 
 
-void atom_show_debug(Atom* atom, char** str) {
+void atom_show_debug(const Atom* atom, char** str) {
   /* TODO */
 }
 

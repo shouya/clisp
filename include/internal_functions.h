@@ -7,11 +7,13 @@
 
 #define DECL(name)                                      \
   Atom* internal_function_##name(                       \
-    List* args,                                         \
+    const List* args,                                   \
     Scope* scope,                                       \
     char** error_message,                               \
-    jmp_buf trace_point)                                \
+    jmp_buf trace_point)
 
+
+void init_internal_functions(Scope* global_scope);
 
 DECL(plus);
 DECL(minus);

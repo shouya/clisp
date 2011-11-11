@@ -28,10 +28,10 @@ void htab_destroy(Htab* htab);
 int htab_set(Htab* htab, const char* k, void* v); /* it won't duplicate v */
 int htab_del(Htab* htab, const char* k);
 
-int htab_find(Htab* htab, const char* key, void* value);
+int htab_find(const Htab* htab, const char* key, void** value);
 void htab_foreach(Htab* htab, HtabEach each);
 
-unsigned long htab_string_hash(const char* key, unsigned long hashsize);
+unsigned long htab_string_hash(const char* key, unsigned long hash_size);
 
 
 

@@ -26,6 +26,6 @@ int scope_del_symbol(Scope* s, const char* name);
    if pass 0 in atom_ptr, only will check symbol existence.
    returns -1 if symbol don't exists, else return 0.
  */
-int scope_find_symbol(Scope* s, const char* name, Atom** atom_ptr);
+int scope_find_symbol(const Scope* s, const char* name, Atom** atom_ptr);
 
 #endif /* _scope_h_ */

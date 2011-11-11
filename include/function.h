@@ -8,58 +8,67 @@
 #define FUNC_TYPE_INTERNAL     1
 #define FUNC_TYPE_USERDEFINED  2
 
-struct Function_ {
-  int n_args;
-  char** args;
-  int type;
-  union {
-    
-  };
-};
 
-typedef Atom* (*FunctionCallback)(List* args,
+typedef Atom* (*FunctionCallback)(const List* args,
                                   Scope* scope,
                                   char** error_message,
                                   jmp_buf trace_point);
 
 
-#define RaiseError(errmsg) do {                 \
-    *error_message = errmsg;                    \
-    long_jmp(trace_point);                      \
-  } while (0)
+struct _Function {
+  int type;
+  List* parameter; /* List of atom of string */
+  union {
+    List* user_defined;
+    FunctionCallback internal;
+  };
+};
 
-/*
-  arg_type type character instruction
-   * l: an int32 val
-   * u: an uint32 val
-   * s: a string
-   * b: a boolean value
-   * n: an integral number
-   * L: a list
-   * X: a expanded list
-   * a: a non-list atom
- */
 
-Function function_new(void);
+/* parameter and body in list will be duplicated */
+Function* function_new_internal(const List* parameter, FunctionCallback body);
+Function* function_new_userdefined(const List* parameter, const List* body);
+
+Function* function_duplicate(const Function* function);
+
 void function_destroy(Function* function);
 
-/*
-  argument reset by new allocate function, should be destroy manually.
-  returns zero if successed, otherwise -1.
+/* 0: parameter are available
+   else return number of parameter which invalid;
  */
-int function_parse(
-  Function* function,
-  const char* arguments, /* as `(x y)' form */
-  const char* body,      /* as `(+ x y)' form*/
-  );
+int function_check_parameter(const Function* function);
+int function_check_arguments(const Function* function,
+                             const List* arguments);
+
 
 /*
-  returns zero if function avalible else -1 will be returned.
+  returns:
+     0: successed and stored result into `result'.
+    -1: argument count error.
+    -2: parameter invalid.
+    -3: functionc evaluate error.
  */
-int function_check(
-  Function* function
-  );
+int function_call(const Function* function,
+                  const List* arguments,
+                  Scope* scope,
+                  Atom** result);
+int function_call_internal(const FunctionCallback callback,
+                           const List* args,
+                           Scope* scope,
+                           Atom** result);
+int function_call_userdefined(const Function* function,
+                              const List* args,
+                              Scope* scope,
+                              Atom** result);
 
+
+
+/* interface for internal defined function */
+#define RaiseError(errmsg)                      \
+  do {                                          \
+    *error_message = errmsg;                    \
+    longjmp(trace_point, 1);                    \
+  } while (0)
 
 
 
