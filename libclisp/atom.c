@@ -20,12 +20,12 @@ void atom_destroy(Atom* a) {
 
 void atom_reset(Atom* a) {
   if (a->is_ref) {
-    a->type = ATOM_TYPE_UNKOWN;
+    a->type = ATOM_TYPE_UNKNOWN;
     return;
   }
 
   switch (a->type) {
-  case ATOM_TYPE_UNKOWN:
+  case ATOM_TYPE_UNKNOWN:
     break;
 
     /* value types */
@@ -53,7 +53,7 @@ void atom_reset(Atom* a) {
     atom_destroy_token(a->token);
     break;
 
-  default: /* unkown */
+  default: /* unknown */
     break;
   }
 }
@@ -64,8 +64,8 @@ Atom* atom_duplicate(const Atom* a) {
   }
 
   switch (a->type) {
-  case ATOM_TYPE_UNKOWN:
-    return atom_new_unknow();
+  case ATOM_TYPE_UNKNOWN:
+    return atom_new_unknown();
     break;
 
     /* value types */
@@ -86,14 +86,14 @@ Atom* atom_duplicate(const Atom* a) {
   case ATOM_TYPE_TOKEN:
     return atom_new_token(a->token);
 
-  default: /* unkown */
+  default: /* unknown */
     break;
   }
 
   return NULL;
 }
 
-int atom_token_to_refrence(Atom* a, Scope* scope) {
+int atom_token_to_refrence(Atom* a, const Scope* scope) {
   Atom* sym;
 
   if (a->type != ATOM_TYPE_TOKEN) return -2;
@@ -110,7 +110,7 @@ Atom* atom_reference(const Atom* ref) {
   return a;
 }
 
-Atom* atom_new_unknow(void) {
+Atom* atom_new_unknown(void) {
   return atom_new();
 }
 
@@ -169,7 +169,7 @@ void atom_destroy_list(List* list) {
 }
 
 
-void atom_set_unkown(Atom* atom) {
+void atom_set_unknown(Atom* atom) {
   atom_reset(atom);
 }
 
@@ -198,7 +198,7 @@ void atom_set_boolean(Atom* atom, char boolean) {
   atom_reset(atom);
   atom->type = ATOM_TYPE_BOOLEAN;
   atom->boolean = malloc(sizeof(char));
-  *atom->boolean = boolean;
+  *atom->boolean = (boolean != 0);
 }
 
 void atom_set_list(Atom* atom, const List* list) {
@@ -223,15 +223,16 @@ void atom_set_token(Atom* atom, const char* token_name) {
 
 void atom_set_atom(Atom* atom, const Atom* new_val) {
   atom_reset(atom);
-  atom->type = new_val->type;
-  /* TODO */
+  memcpy(atom, atom_duplicate(new_val), sizeof(Atom));
 }
 
 void atom_set_reference(Atom* a, const Atom* ref) {
   atom_reset(a);
+  a->is_ref = 1;
+  
   a->type = ref->type;
   switch (a->type) {
-  case ATOM_TYPE_UNKOWN: break;
+  case ATOM_TYPE_UNKNOWN: break;
   case ATOM_TYPE_INT: a->i32 = ref->i32; break;
   case ATOM_TYPE_UINT: a->ui32 = ref->ui32; break;
   case ATOM_TYPE_BOOLEAN: a->boolean = ref->boolean; break;
@@ -293,13 +294,13 @@ int atom_get_string(Atom* atom, char** string) {
 int atom_get_boolean(Atom* atom, char* boolean) {
   switch (atom->type) {
   case ATOM_TYPE_INT:
-    *boolean = atom->i32 != 0;
+    *boolean = *atom->i32 != 0;
     break;
   case ATOM_TYPE_UINT:
-    *boolean = atom->ui32 != 0;
+    *boolean = *atom->ui32 != 0;
     break;
   case ATOM_TYPE_BOOLEAN:
-    *boolean = atom->boolean != 0;
+    *boolean = *atom->boolean != 0;
     break;
   case ATOM_TYPE_STRING:
     *boolean = atom->string != 0 && strlen(atom->string) != 0;
@@ -353,7 +354,7 @@ int atom_get_token(Atom* atom, char** token_name) {
 
 int atom_eval(Atom* atom, Scope* scope) {
   switch (atom->type) {
-  case ATOM_TYPE_UNKOWN:
+  case ATOM_TYPE_UNKNOWN:
   case ATOM_TYPE_INT:
   case ATOM_TYPE_UINT:
   case ATOM_TYPE_BOOLEAN:
@@ -367,14 +368,24 @@ int atom_eval(Atom* atom, Scope* scope) {
       return 0; /* cannot evaluate list */
     }
     atom_set_atom(atom, result);
+    atom_destroy(result);
   } break;
   case ATOM_TYPE_TOKEN:
-    atom_token_to_refrence(atom, scope);
+    atom_dereference_token(atom, scope);
     break;
   }
 
   return 0;
 }
+
+void atom_dereference_token(Atom* atom, const Scope* scope) {
+  if (atom->type == ATOM_TYPE_TOKEN) {
+    atom_token_to_refrence(atom, scope);
+  } else if (atom->type == ATOM_TYPE_LIST) {
+    list_dereference_token(atom->list, scope);
+  }
+}
+
 
 
 
@@ -430,7 +441,7 @@ Atom* atom_parse_string(const char* str) {
       strcmp(p, "nil")==0 || strcmp(p, "Nil")==0 || strcmp(p, "NIL")==0 ||
       strcmp(p, "false")==0 || strcmp(p, "False")==0 || strcmp(p, "FALSE")==0 ||
       strcmp(p, "no")==0 || strcmp(p, "No")==0 || strcmp(p, "NO")==0 ||
-      strcmp(p, "()")==0;
+      strcmp(p, "()")==0 || strcmp(p, "'()")==0;
 
     if (booltrue || boolfalse) {
       return atom_new_boolean(booltrue);
@@ -466,12 +477,6 @@ Atom* atom_parse_string(const char* str) {
     strlst = malloc(sizeof(char) * MAX_LIST_STRING_LENGTH);
 
     for (;;) {
-      if (p > str_end) {
-        free(strlst);
-        strlst = NULL;
-        break;
-      }
-
       if (*p == '(') {
         !in_str ? ++bracket_stack : 0;
       } else if (*p == ')') {
@@ -483,7 +488,13 @@ Atom* atom_parse_string(const char* str) {
       if (bracket_stack == 0) {
         break;
       }
-      ++p;
+
+      if (p++ > str_end) {
+        printf("%p, %p, %s\n", p, str_end, str);
+        free(strlst);
+        strlst = NULL;
+        break;
+      }
     }
 
     if (strlst == NULL) { break; }
@@ -502,26 +513,24 @@ Atom* atom_parse_string(const char* str) {
   } while (0);
 
   /* parse references */ /*
-  do {
-    char* p;
-    Atom* sym;
+     do {
+     char* p;
+     Atom* sym;
 
-    if (scope == NULL) {
-      break;
-    }
-    p = str;
+     if (scope == NULL) {
+     break;
+     }
+     p = str;
 
-    while (isspace(*p) && ++p) {}
-    if (scope_find_symbol(scope, p, &sym) == 0) {
-      return atom_reference(sym);
-    }
-    } while (0);*/
+     while (isspace(*p) && ++p) {}
+     if (scope_find_symbol(scope, p, &sym) == 0) {
+     return atom_reference(sym);
+     }
+     } while (0);*/
 
 
   /* parse token */
   do {
-    while (isspace(*str)) ++str;
-
     return atom_new_token(str);
 
   } while (0);
@@ -535,7 +544,7 @@ Atom* atom_parse_string(const char* str) {
 void atom_show(const Atom* atom, char** str) {
   char* buf = calloc(MAX_SHOW_BUFFER_SIZE, sizeof(char));
   switch (atom->type) {
-  case ATOM_TYPE_UNKOWN:
+  case ATOM_TYPE_UNKNOWN:
     break;
   case ATOM_TYPE_INT: {
     snprintf(buf, MAX_SHOW_BUFFER_SIZE, "%+ld", *atom->i32);
@@ -581,6 +590,68 @@ void atom_show_debug(const Atom* atom, char** str) {
   /* TODO */
 }
 
+/*
+  return 0 for equal,
+  1 for great,
+  -1 for less,
+  2 for non equal(cannot compare size)
+  -2 for type error
+*/
+int atom_compare(const Atom* a1, const Atom* a2) {
+  { /* string */
+    if (a1->type == ATOM_TYPE_STRING && a2->type == ATOM_TYPE_STRING) {
+      return strcmp(a1->string, a2->string);
+    }
+  }
+  { /* list */
+    List* lst1 = NULL, *lst2 = NULL;
+    if (atom_get_list((Atom*)a1, &lst1) == 0 &&
+        atom_get_list((Atom*)a2, &lst1) == 0) {
+      return list_compare(lst1, lst2);
+    }
+  }
+  { /* function */
+    Function* func1, *func2;
+    if (atom_get_function((Atom*)a1, &func1) == 0 &&
+        atom_get_function((Atom*)a1, &func2) == 0) {
+      if (func1->type != func2->type) {
+        return 0;
+      }
+      if (func1->type == FUNC_TYPE_INTERNAL &&
+          func1->internal == func2->internal) {
+        return 0;
+      }
+      if (func1->type == FUNC_TYPE_USERDEFINED &&
+          list_compare(func1->parameter, func2->parameter) == 0 &&
+          list_compare(func1->user_defined, func2->user_defined) == 0) {
+        return 0;
+      }
+      return 2;
+    }
+  }
+  { /* token */
+    if (a1->type == ATOM_TYPE_TOKEN && a2->type == ATOM_TYPE_TOKEN) {
+      return strcmp(a1->token, a2->token);
+    }
+  }
+  { /* signed/unsigned int */
+    long intval1, intval2;
+    if (atom_get_int((Atom*)a1, &intval1) == 0 &&
+        atom_get_int((Atom*)a2, &intval2) == 0) {
+      return (intval1 == intval2 ?  0 :
+              (intval1 < intval2 ? -1 : 1));
+    }
+  }
+  { /* boolean */
+    char boolval1, boolval2;
+    if (atom_get_boolean((Atom*)a1, &boolval1) == 0 &&
+        atom_get_boolean((Atom*)a2, &boolval2) == 0) {
+      if (boolval1 == boolval2) return 0;
+      return 2;
+    }
+  }
+  return -2;
+}
 
 #undef MAX_STRING_LENGTH
 #undef MAX_TOKEN_LENGTH

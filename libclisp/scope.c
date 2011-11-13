@@ -43,6 +43,7 @@ int scope_del_symbol(Scope* s, const char* name) {
 
 int scope_find_symbol(const Scope* s, const char* name, Atom** atom_ptr) {
   Atom* atom;
+
   if (htab_find(s->symtab, name, (void**)&atom) == 0) {
     if (atom_ptr != NULL)
       *atom_ptr = atom;

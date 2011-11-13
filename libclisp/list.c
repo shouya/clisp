@@ -33,9 +33,16 @@ List* list_duplicate(const List* src) {
 }
 
 void list_append_item(List* list, Atom* item) {
-  list->items = realloc(list->items, sizeof(Atom) * (++list->n_items));
+  list->items = realloc(list->items, sizeof(Atom*) * (++list->n_items));
   list->items[list->n_items - 1] = item;
 }
+
+void list_prepend_item(List* list, Atom* item) {
+  list->items = realloc(list->items, sizeof(Atom) * (++list->n_items));
+  memmove(list->items+1, list->items, sizeof(Atom*) * list->n_items-1);
+  *list->items = item;
+}
+
 
 List* list_slice(const List* list, int start, int end) {
   Atom* const* s, * const* e;
@@ -73,145 +80,116 @@ List* list_slice(const List* list, int start, int end) {
   return ret;
 }
 
+void list_dereference_token(List* list, const Scope* scope) {
+  Atom** iter = list->items;
+  while (iter != list->items + list->n_items) {
+    atom_dereference_token(*iter, scope);
 
-#define STATE_FREE   1
-#define STATE_STRING 2
-#define STATE_LIST   3
-#define STATE_TOKEN  4
+    ++iter;
+  }
+}
+
 
 List* list_parse_string(const char* str) {
   char* parse_buffer = malloc(sizeof(char) * PARSE_BUFFER_SIZE);
-  int state = STATE_FREE, bracket_level = 0;
+  int bracket_level = 0;
+  char in_str = 0, in_lst = 0, in_tok = 0, to_commit = 0;
   char* pb = parse_buffer;
   const char* ps = str;
   List* list = list_new();
 
   /* charater level state machine */
   for (; *ps; ++ps) {
-    switch (state) {
-    case STATE_FREE: {
+    if (isspace(*ps) && !in_tok && !in_str && !in_lst) continue;
 
-      if (isspace(*ps)) {
-        continue;
-      }
-
-      *pb++ = *ps;
-      if (*ps == '(') {
-        state = STATE_LIST;
-        ++bracket_level;
-      } else if (*ps == '"') {
-        state = STATE_STRING;
-      } else {
-        state = STATE_TOKEN;
-      }
-
-    } break;
-    case STATE_STRING: {
-
-      *pb++ = *ps;
-      if (*ps == '"') {
-        state = STATE_FREE;
-        *pb = '\0';
-        list_parse_commit(list, parse_buffer);
-        pb = parse_buffer;
-      }
-
-    } break;
-    case STATE_LIST: {
-      
-      *pb++ = *ps;
-      if (*ps == '(') {
-        ++bracket_level;
-      } else if (*ps == ')') {
-        --bracket_level;
-      }
-
-      if (bracket_level == 0) {
-        state = STATE_FREE;
-        *pb = '\0';
-        list_parse_commit(list, parse_buffer);
-        pb = parse_buffer;
-      }
-
-    } break;
-    case STATE_TOKEN: {
-
-      *pb++ = *ps;
-      if (isspace(*ps)) {
-        state = STATE_FREE;
-        pb[-1] = '\0';
-        list_parse_commit(list, parse_buffer);
-        pb = parse_buffer;
-      }
-
-    } break;
-
-    default:
-      ;
+    *pb++ = *ps;
+    if (*ps == '"' && ps[-1] != '\\') {
+      in_str ^= 1;
+    } else if (strncmp(ps, "'(", 2) == 0 && !in_str) {
+      *pb++ = *++ps;
+      in_lst = ++bracket_level;
+    } else if (*ps == '(' && !in_str) {
+      in_lst = ++bracket_level;
+    } else if (*ps == ')' && !in_str) {
+      in_lst = --bracket_level;
+    } else if (isspace(*ps) && in_tok) {
+      in_tok = 0;
+    } else {
+      in_tok = 1;
     }
+
+    if (*ps == ')' && !in_lst && !in_str) {
+      to_commit = 1;
+    } else if (*ps == '"' && !in_str && !in_str) {
+      to_commit = 1;
+    } else if (isspace(*ps) && !in_tok && !in_lst && !in_str) {
+      --pb;
+      to_commit = 1;
+    } else if (ps[1] == '\0' && in_tok) {
+      to_commit = 1;
+    } else if (ps[1] == '\0' && !in_lst && !in_str) {
+      to_commit = 1;
+    }
+   
+    if (to_commit) {
+      *pb = '\0';
+      list_parse_commit(list, parse_buffer);
+      pb = parse_buffer;
+      to_commit = 0;
+    }
+
   }
+
+
 /*  list_parse_commit(list, parse_buffer);*/
   
 
   free(parse_buffer);
   return list;
 }
-#undef STATE_FREE
-#undef STATE_STRING
-#undef STATE_LIST
-#undef STATE_TOKEN
 
 static void list_parse_commit(List* lst, const char* str) {
+  if (strlen(str) == 0) return;
   list_append_item(lst, atom_parse_string(str));
 }
 
 
 int list_eval(List* list, Scope* scope, Atom** atom) {
-  Atom** iter;
   if (list->is_quoted != 0) {
     *atom = atom_new_list(list);
     return 0;
   }
 
-  iter = list->items;
-  while (iter - list->items < list->n_items) {
+  if (list->n_items == 0) {
+    *atom = atom_new_boolean(0);
+    return 0;
+  }
+
+  return function_eval_list(
+    list, scope, atom);
+}
+
+void list_eval_atoms(List* list, Scope* scope) {
+  Atom** iter = list->items;
+
+  while (iter != list->items + list->n_items) {
     atom_eval(*iter, scope);
     ++iter;
   }
-
-  {
-    List* args = list_slice(list, 1, -1);
-    Function* func;
-    Atom* result;
-
-    if (atom_get_function(list->items[0], &func) != 0) {
-      *atom = NULL;
-      list_destroy(args);
-      return -1;
-    }
-
-    if (function_call(func, args, scope, &result) != 0) {
-      *atom = NULL;
-      list_destroy(args);
-      return -2;
-    }
-
-    *atom = result;
-    list_destroy(args);
-
-    return 0;
-  }
 }
+
 
 void list_show(const List* list, char** str) {
   char* buf = calloc(MAX_SHOW_BUFFER_SIZE, sizeof(char));
   Atom* const* iter = list->items;
+  char any_item = 0;
 
   if (list->is_quoted) {
     strcpy(buf, "'(");
   } else {
     strcpy(buf, "(");
   }
+
   while (iter - list->items < list->n_items) {
     char* atm_shw;
     atom_show(*iter, &atm_shw);
@@ -219,13 +197,36 @@ void list_show(const List* list, char** str) {
     strcat(buf, atm_shw);
     free(atm_shw);
 
-    strcat(buf, ", ");
+    strcat(buf, " ");
+    any_item = 1;
     ++iter;
   }
+
+  if (any_item) buf[strlen(buf)-1] = '\0';
+  
+  strcat(buf, ")");
 
   *str = malloc(sizeof(char) * (strlen(buf)+1));
   strcpy(*str, buf);
 
   free(buf);
   return;
+}
+
+int list_compare(const List* l1, const List* l2) {
+  Atom* const* iter1, * const* iter2;
+  
+  if (l1->n_items != l2->n_items) return 2;
+  if (l1->is_quoted != l2->is_quoted) return 2;
+
+  iter1 = l1->items;
+  iter2 = l2->items;
+
+  while (iter1 != l1->items + l1->n_items) {
+    if (atom_compare(*iter1, *iter2) != 0) {
+      return 2;
+    }
+  }
+
+  return 0;
 }

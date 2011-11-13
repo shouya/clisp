@@ -27,7 +27,7 @@ void htab_destroy(Htab* htab) {
 int htab_set(Htab* htab, const char* k, void* v) {
   unsigned long hash = htab_string_hash(k, htab->size);
 
-  if (htab->nodes[hash] == 0) {
+  if (htab->nodes[hash] == NULL) {
     htab->nodes[hash] = calloc(1, sizeof(HtabNode));
     htab->nodes[hash]->key = malloc(sizeof(char) * (strlen(k)+1));
     strcpy(htab->nodes[hash]->key, k);

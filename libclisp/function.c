@@ -88,12 +88,14 @@ int function_check_arguments(const Function* function,
           0 : (-1));
 }
 
+
 /*
   returns:
      0: successed and stored result into `result'.
     -1: argument count error.
     -2: parameter invalid.
     -3: functionc evaluate error.
+    
  */
 
 int function_call(const Function* function,
@@ -112,6 +114,50 @@ int function_call(const Function* function,
   return 0;
 }
 
+/*
+  returns:
+      0:   successed and stored result into atom
+     -1:   no such function in scope
+     -2:   function cannot be evaluate
+ */
+
+int function_eval_list(const List* list, Scope* scope, Atom** result) {
+  Function* func_obj;
+  Atom* func_atom = atom_duplicate(list->items[0]);
+  List* args;
+  Atom* func_evaled;
+  
+  atom_dereference_token(func_atom, scope);
+  if (atom_get_function(func_atom, &func_obj) != 0) {
+    atom_destroy(func_atom);
+    return -1;
+  }
+  args = list_slice(list, 1, -1);
+
+  if (func_obj->type == FUNC_TYPE_USERDEFINED) {
+    Atom** iter = args->items;
+    while (iter != args->items + args->n_items) {
+      atom_eval(*iter, scope);
+      ++iter;
+    }
+  } else {
+/*    list_dereference_token(args, scope);*/
+  }
+
+  if (function_call(func_obj, args, scope, &func_evaled) == 0) {
+    *result = func_evaled;
+    list_destroy(args);
+    atom_destroy(func_atom);
+    return 0;
+  }
+
+  list_destroy(args);
+  atom_destroy(func_atom);
+
+  return -2;
+}
+
+
 int function_call_internal(const FunctionCallback callback,
                            const List* args,
                            Scope* scope,
@@ -119,9 +165,11 @@ int function_call_internal(const FunctionCallback callback,
   Scope* function_scope = scope_new(scope);
   jmp_buf trace_point;
   char* errmsg;
+
   if (setjmp(trace_point) == 0) {
     Atom* eval_result;
-    eval_result = (*callback)(args, function_scope, &errmsg, trace_point);
+    List* args_dup = list_duplicate(args);
+    eval_result = (*callback)(args_dup, function_scope, &errmsg, trace_point);
     if (eval_result)
       *result = eval_result;
   } else {

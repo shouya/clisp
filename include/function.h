@@ -9,7 +9,7 @@
 #define FUNC_TYPE_USERDEFINED  2
 
 
-typedef Atom* (*FunctionCallback)(const List* args,
+typedef Atom* (*FunctionCallback)(List* args,
                                   Scope* scope,
                                   char** error_message,
                                   jmp_buf trace_point);
@@ -60,6 +60,9 @@ int function_call_userdefined(const Function* function,
                               const List* args,
                               Scope* scope,
                               Atom** result);
+
+int function_eval_list(const List* list, Scope* scope, Atom** result);
+
 
 
 

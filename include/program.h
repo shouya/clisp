@@ -2,29 +2,20 @@
 #ifndef _program_h_
 #define _program_h_
 
-struct statement_t;
-struct sym_table_t;
+#include <defines.h>
 
-struct program_t {
-  int num_statements;
-  struct statement_t* step_ptr;
-  struct statement_t** statements;
-  struct scope_t* global_scope;
-  struct 
+struct _Program {
+  Scope* global_scope;
 };
 
-struct program_t* new_program(void);
-void destroy_program(struct program_t* program);
+Program* program_new(void);
+void program_destroy(Program* program);
 
-void program_step(struct program_t* program);
-void program_run(struct program_t* program);
+void program_init(Program* program);
 
+void program_exec_file(Program* program, const char* filename);
+void program_exec_string(Program* program, const char* string);
 
-void program_append_statement(
-    struct program_t* program,
-    const statement* statement);
-
-
-
+void exec_one_line(const char* string);
 
 #endif /* _program_h_ */

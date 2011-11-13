@@ -4,7 +4,7 @@
 
 #include <defines.h>
 
-#define ATOM_TYPE_UNKOWN    0
+#define ATOM_TYPE_UNKNOWN   0
 #define ATOM_TYPE_INT       1
 #define ATOM_TYPE_UINT      2
 #define ATOM_TYPE_STRING    3
@@ -39,11 +39,11 @@ void atom_reset(Atom* a);
    -2:  atom is not token type
     0:  atom seted to reference of special token
  */
-int atom_token_to_refrence(Atom* a, Scope* scope);
+int atom_token_to_refrence(Atom* a, const Scope* scope);
 
 Atom* atom_reference(const Atom* ref);
 
-Atom* atom_new_unknow(void);
+Atom* atom_new_unknown(void);
 Atom* atom_new_int(long value);
 Atom* atom_new_uint(unsigned long value);
 /* str will be duplicate  */
@@ -61,7 +61,7 @@ void atom_destroy_token(char* token);
 void atom_destroy_function(Function* func);
 void atom_destroy_list(List* list);
 
-void atom_set_unkown(Atom* atom);
+void atom_set_unknown(Atom* atom);
 void atom_set_int(Atom* atom, long value);
 void atom_set_uint(Atom* atom, unsigned long value);
 void atom_set_string(Atom* atom, const char* str);
@@ -89,10 +89,21 @@ int atom_get_function(Atom* atom, Function** function);
 int atom_get_token(Atom* atom, char** token_name);
 
 int atom_eval(Atom* atom, Scope* scope);
+void atom_dereference_token(Atom* atom, const  Scope* scope);
 
 Atom* atom_parse_string(const char* str);
 
 void atom_show(const Atom* atom, char** str);
 void atom_show_debug(const Atom* atom, char** str);
+
+/*
+  return 0 for equal,
+  1 for great,
+  -1 for less,
+  2 for non equal(cannot compare size)
+  -2 for type error
+*/
+int atom_compare(const Atom* a1, const Atom* a2);
+
 
 #endif /* _atom_h_ */

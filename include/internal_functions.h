@@ -7,7 +7,7 @@
 
 #define DECL(name)                                      \
   Atom* internal_function_##name(                       \
-    const List* args,                                   \
+    List* args,                                         \
     Scope* scope,                                       \
     char** error_message,                               \
     jmp_buf trace_point)
@@ -23,6 +23,23 @@ DECL(divide);
 DECL(setq);
 DECL(defun);
 DECL(print);
+
+DECL(cond);
+
+DECL(equal);
+DECL(lessthan);
+DECL(greatthan);
+DECL(notequal);
+
+DECL(let);
+DECL(progn);
+
+DECL(car);
+DECL(cdr);
+DECL(cons);
+DECL(atom);
+DECL(quote);
+
 
 #undef DECL
 
