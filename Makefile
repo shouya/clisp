@@ -28,6 +28,7 @@ CLISP_OBJECTS = $(CLISP_SOURCES:.c=.o)
 OPTIMIZATION = -O3
 PEDANTIC = -ansi -pedantic
 DEBUG = yes
+PROFILE = yes
 
 ifeq ($(DEBUG), yes)
 	CFLAGS += -g

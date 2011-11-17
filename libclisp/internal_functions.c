@@ -22,13 +22,16 @@
     atom = atom_new_function(func);                                     \
     function_destroy(func);                                             \
     scope_set_symbol(scope, name, atom);                                \
-  } while (0)                    
+  } while (0)
 
 /*typedef Atom* (*FunctionCallback)(List* args, Scope scope);*/
 
 void init_internal_functions(Scope* global_scope) {
   SCOPE_ADD_FUNC(global_scope, "+", plus);
   SCOPE_ADD_FUNC(global_scope, "-", minus);
+  SCOPE_ADD_FUNC(global_scope, "*", multiply);
+  SCOPE_ADD_FUNC(global_scope, "/", divide);
+
   SCOPE_ADD_FUNC(global_scope, "setq", setq);
   SCOPE_ADD_FUNC(global_scope, "defun", defun);
   SCOPE_ADD_FUNC(global_scope, "print", print);
@@ -37,6 +40,16 @@ void init_internal_functions(Scope* global_scope) {
   SCOPE_ADD_FUNC(global_scope, "=", equal); 
   SCOPE_ADD_FUNC(global_scope, "<", lessthan);
   SCOPE_ADD_FUNC(global_scope, ">", greatthan);
+  SCOPE_ADD_FUNC(global_scope, "!=", notequal);
+
+  SCOPE_ADD_FUNC(global_scope, "let", let);
+  SCOPE_ADD_FUNC(global_scope, "progn", progn);
+
+  SCOPE_ADD_FUNC(global_scope, "car", car);
+  SCOPE_ADD_FUNC(global_scope, "cdr", cdr);
+  SCOPE_ADD_FUNC(global_scope, "atom", atom);
+  SCOPE_ADD_FUNC(global_scope, "quote", quote);
+  
 }
 
 
@@ -242,7 +255,7 @@ DECL(let) {
   } while (0);
 
   body = args->items[1];
-  var_define = list_duplicate(var_define);
+  var_define = list_duplicate(args->items[0]->list);
 
   local_scope = scope_new(scope);
   {
@@ -292,8 +305,9 @@ DECL(progn) {
     atom_eval(*prog_iter, scope);
     ++prog_iter;
   }
-  --prog_iter;
-  return atom_duplicate(*prog_iter);
+  if (args->n_items == 0) return atom_new_unknown();
+
+  return atom_duplicate(prog_iter[-1]);
 }
 
 DECL(car) {

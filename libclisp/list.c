@@ -22,7 +22,7 @@ List* list_new(void) {
 
 void list_destroy(List* list) {
   Atom** p = list->items;
-  while (p - list->items < list->n_items) {
+  while (p < list->items + list->n_items) {
     atom_destroy(*p++);
   }
   free(list);
@@ -120,7 +120,7 @@ List* list_parse_string(const char* str) {
 
     if (*ps == ')' && !in_lst && !in_str) {
       to_commit = 1;
-    } else if (*ps == '"' && !in_str && !in_str) {
+    } else if (*ps == '"' && !in_lst && !in_str) {
       to_commit = 1;
     } else if (isspace(*ps) && !in_tok && !in_lst && !in_str) {
       --pb;
@@ -132,10 +132,10 @@ List* list_parse_string(const char* str) {
     }
    
     if (to_commit) {
+      to_commit = 0;
       *pb = '\0';
       list_parse_commit(list, parse_buffer);
       pb = parse_buffer;
-      to_commit = 0;
     }
 
   }

@@ -11,7 +11,7 @@ Htab* htab_new(int size, HtabFreeHandler free_handler) {
 void htab_destroy(Htab* htab) {
   int i = 0;
 
-  for (; i != HTAB_SIZE; ++i) {
+  for (; i != htab->size; ++i) {
     if (htab->nodes[i]) {
       free(htab->nodes[i]->key);
       if (htab->free_handler) {
@@ -32,6 +32,10 @@ int htab_set(Htab* htab, const char* k, void* v) {
     htab->nodes[hash]->key = malloc(sizeof(char) * (strlen(k)+1));
     strcpy(htab->nodes[hash]->key, k);
     ++htab->n_nodes;
+  } else {
+    if (htab->free_handler) {
+        (*htab->free_handler)(htab->nodes[hash]->value);
+    }
   }
 
   htab->nodes[hash]->value = v;
@@ -40,7 +44,7 @@ int htab_set(Htab* htab, const char* k, void* v) {
 }
 
 int htab_del(Htab* htab, const char* k) {
-  unsigned long hash = htab_string_hash(k, HTAB_SIZE);
+  unsigned long hash = htab_string_hash(k, htab->size);
 
   if (htab->nodes[hash] == NULL) {
     return 1;
@@ -72,7 +76,7 @@ int htab_find(const Htab* htab, const char* key, void** value) {
 void htab_foreach(Htab* htab, HtabEach each) {
   int i = 0;
 
-  for (; i != HTAB_SIZE; ++i) {
+  for (; i != htab->size; ++i) {
     if (htab->nodes[i] == NULL) continue;
     (*each)(htab->nodes[i]->key, htab->nodes[i]->value);
   }

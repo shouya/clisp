@@ -16,12 +16,12 @@ typedef Atom* (*FunctionCallback)(List* args,
 
 
 struct _Function {
-  int type;
-  List* parameter; /* List of atom of string */
   union {
     List* user_defined;
     FunctionCallback internal;
   };
+  int type;
+  List* parameter; /* List of atom of string */
 };
 
 

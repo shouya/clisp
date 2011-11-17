@@ -11,6 +11,6 @@
 #include <function.h>
 #include <list.h>
 #include <internal_functions.h>
-
+#include <program.h>
 
 #endif /* _clisp_common_h_ */

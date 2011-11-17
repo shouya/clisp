@@ -4,8 +4,6 @@
 
 #include <defines.h>
 
-#define HTAB_SIZE 2048
-
 typedef void (*HtabEach)(const char* k, void* v);
 typedef void (*HtabFreeHandler)(void* v);
 

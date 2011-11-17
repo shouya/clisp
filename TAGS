@@ -1,0 +1,236 @@
+
+include/atom.h,523
+#define _atom_h_3,61
+#define ATOM_TYPE_UNKNOWN 7,101
+#define ATOM_TYPE_INT 8,131
+#define ATOM_TYPE_UINT 9,161
+#define ATOM_TYPE_STRING 10,191
+#define ATOM_TYPE_BOOLEAN 11,221
+#define ATOM_TYPE_LIST 12,251
+#define ATOM_TYPE_FUNCTION 13,281
+#define ATOM_TYPE_TOKEN 14,311
+struct _Atom 16,342
+  int type;17,357
+  int is_ref;18,369
+    long* i32;20,393
+    unsigned long* ui32;21,427
+    char* string;22,461
+    char* boolean;23,495
+    List* list;24,529
+    Function* function;25,563
+    char* token;26,597
+
+include/clisp_common.h,58
+#define _clisp_common_h_3,70
+#define CLISP_VERSION 5,96
+
+include/defines.h,287
+#define _defines_h_3,65
+typedef struct _Function Function;13,218
+typedef struct _Atom Atom;14,253
+typedef struct _List List;15,280
+typedef struct _Scope Scope;16,307
+typedef struct _Program Program;17,336
+typedef struct _HtabNode HtabNode;19,370
+typedef struct _Htab Htab;20,405
+
+include/function.h,322
+#define _function_h_3,65
+#define FUNC_TYPE_INTERNAL 8,129
+#define FUNC_TYPE_USERDEFINED 9,162
+typedef Atom* (*FunctionCallback)FunctionCallback12,197
+struct _Function 18,405
+  int type;19,424
+  List* parameter;20,436
+    List* user_defined;22,494
+    FunctionCallback internal;23,518
+#define RaiseError(70,1935
+
+include/hashtab.h,314
+#define _hashtab_h_3,65
+typedef void (*HtabEach)HtabEach7,108
+typedef void (*HtabFreeHandler)HtabFreeHandler8,158
+struct _HtabNode 12,231
+  char* key;13,250
+  void* value;14,263
+struct _Htab 16,281
+  int n_nodes;17,296
+  int size;18,311
+  HtabFreeHandler free_handler;19,323
+  HtabNode** nodes;20,355
+
+include/internal_functions.h,75
+#define _internal_functions_h_3,76
+#define DECL(8,196
+#undef DECL44,822
+
+include/lexer.h,23
+#define _lexer_h_3,63
+
+include/list.h,109
+#define _list_h_3,61
+struct _List 7,101
+  int n_items;8,116
+  int is_quoted;9,131
+  Atom** items;10,148
+
+include/program.h,77
+#define _program_h_3,64
+struct _Program 7,107
+  Scope* global_scope;8,125
+
+include/scope.h,129
+#define _scope_h_3,63
+#define SCOPE_SYMBOL_HASH_SIZE 7,104
+struct _Scope 9,141
+  Scope* parent;10,157
+  Htab* symtab;11,174
+
+libclisp/atom.c,1541
+#define MAX_STRING_LENGTH 7,79
+#define MAX_TOKEN_LENGTH 8,110
+#define MAX_LIST_STRING_LENGTH 9,139
+#define MAX_SHOW_BUFFER_SIZE 10,175
+Atom* atom_new(12,210
+void atom_destroy(16,270
+void atom_reset(21,330
+Atom* atom_duplicate(61,1026
+int atom_token_to_refrence(96,1753
+Atom* atom_reference(107,1991
+Atom* atom_new_unknown(113,2100
+Atom* atom_new_int(117,2155
+Atom* atom_new_uint(122,2252
+Atom* atom_new_string(128,2389
+Atom* atom_new_boolean(133,2495
+Atom* atom_new_list(139,2634
+Atom* atom_new_function(145,2768
+Atom* atom_new_token(151,2920
+void atom_destroy_string(157,3039
+void atom_destroy_token(160,3092
+void atom_destroy_function(164,3149
+void atom_destroy_list(167,3222
+void atom_set_unknown(172,3285
+void atom_set_int(176,3344
+void atom_set_uint(183,3499
+void atom_set_string(190,3676
+void atom_set_boolean(197,3855
+void atom_set_list(204,4037
+void atom_set_function(210,4179
+void atom_set_token(216,4341
+void atom_set_atom(224,4538
+void atom_set_reference(229,4670
+int atom_get_int(249,5245
+int atom_get_uint(266,5534
+int atom_get_string(283,5832
+int atom_get_boolean(294,6014
+int atom_get_list(322,6636
+int atom_get_function(333,6808
+int atom_get_token(343,7003
+int atom_eval(355,7191
+void atom_dereference_token(381,7730
+Atom* atom_parse_string(392,7974
+void atom_show(546,11125
+void atom_show_debug(591,12199
+int atom_compare(602,12385
+#undef MAX_STRING_LENGTH658,13992
+#undef MAX_TOKEN_LENGTH659,14017
+#undef MAX_LIST_STRING_LENGTH660,14041
+#undef MAX_SHOW_BUFFER_SIZE661,14071
+
+libclisp/function.c,403
+static Function* function_new(17,178
+Function* function_new_internal(22,258
+Function* function_new_userdefined(30,483
+Function* function_duplicate(44,839
+void function_destroy(55,1135
+int function_check_parameter(62,1286
+int function_check_arguments(82,1694
+int function_call(101,2118
+int function_eval_list(124,2651
+int function_call_internal(161,3489
+int function_call_userdefined(190,4191
+
+libclisp/hashtab.c,179
+Htab* htab_new(3,22
+void htab_destroy(11,251
+int htab_set(27,559
+int htab_del(42,935
+int htab_find(60,1295
+void htab_foreach(72,1538
+unsigned long htab_string_hash(83,1740
+
+libclisp/internal_functions.c,423
+#define DECL(8,111
+#define SCOPE_ADD_FUNC(15,460
+void init_internal_functions(29,1280
+DECL(56,2175
+DECL(70,2472
+DECL(87,2825
+DECL(100,3137
+DECL(117,3507
+DECL(128,3824
+DECL(153,4375
+DECL(162,4544
+DECL(187,5171
+DECL(201,5581
+DECL(215,5995
+DECL(230,6412
+DECL(245,6827
+DECL(302,8251
+DECL(313,8504
+DECL(327,8738
+DECL(346,9062
+DECL(365,9371
+DECL(378,9586
+#undef DECL398,9877
+#undef SCOPE_ADD_FUNC399,9889
+
+libclisp/internal_functions.o,12
+AA3,5266
+
+libclisp/list.c,448
+#define PARSE_BUFFER_SIZE 6,60
+#define MAX_SHOW_BUFFER_SIZE 7,91
+List* list_new(19,258
+void list_destroy(23,318
+List* list_duplicate(31,465
+void list_append_item(35,541
+void list_prepend_item(40,706
+List* list_slice(47,926
+void list_dereference_token(83,1526
+List* list_parse_string(93,1728
+static void list_parse_commit(151,3162
+int list_eval(157,3307
+void list_eval_atoms(172,3580
+void list_show(182,3756
+int list_compare(216,4415
+
+libclisp/program.c,175
+Program* program_new(7,92
+void program_destroy(11,161
+void program_init(18,299
+void program_exec_file(27,519
+void program_exec_string(52,1030
+void exec_one_line(61,1214
+
+libclisp/scope.c,141
+Scope* scope_new(13,118
+void scope_destroy(20,308
+void scope_set_symbol(26,439
+int scope_del_symbol(33,609
+int scope_find_symbol(44,920
+
+tools/clisp/clisp.c,15
+int main(7,92
+
+libclisp/scope.o,0
+
+libclisp/program.o,0
+
+libclisp/list.o,0
+
+libclisp/hashtab.o,0
+
+libclisp/function.o,0
+
+libclisp/atom.o,0

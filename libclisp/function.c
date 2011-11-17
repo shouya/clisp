@@ -34,7 +34,7 @@ Function* function_new_userdefined(const List* parameter, const List* body) {
   if (function_check_parameter(f) != 0) {
     list_destroy(f->parameter);
     free(f);
-    return NULL;
+    return NULL; /* this function may return a null value */
   }
   f->user_defined = list_duplicate(body);
 
@@ -72,9 +72,8 @@ int function_check_parameter(const Function* function) {
   p = param->items;
 
   while (p - param->items < param->n_items) {
-    if ((*p)->type != ATOM_TYPE_TOKEN)
+    if ((*p++)->type != ATOM_TYPE_TOKEN)
       ++n_invalid;
-    ++p;
   }
   return n_invalid;
 }
@@ -123,10 +122,13 @@ int function_call(const Function* function,
 
 int function_eval_list(const List* list, Scope* scope, Atom** result) {
   Function* func_obj;
-  Atom* func_atom = atom_duplicate(list->items[0]);
+  Atom* func_atom;
   List* args;
   Atom* func_evaled;
-  
+
+  if (list->n_items == 0) return -2;
+
+  func_atom = atom_duplicate(list->items[0]);
   atom_dereference_token(func_atom, scope);
   if (atom_get_function(func_atom, &func_obj) != 0) {
     atom_destroy(func_atom);
@@ -135,10 +137,9 @@ int function_eval_list(const List* list, Scope* scope, Atom** result) {
   args = list_slice(list, 1, -1);
 
   if (func_obj->type == FUNC_TYPE_USERDEFINED) {
-    Atom** iter = args->items;
+    Atom** iter = &args->items[0];
     while (iter != args->items + args->n_items) {
-      atom_eval(*iter, scope);
-      ++iter;
+      atom_eval(*iter++, scope);
     }
   } else {
 /*    list_dereference_token(args, scope);*/
@@ -164,20 +165,22 @@ int function_call_internal(const FunctionCallback callback,
                            Atom** result) {
   Scope* function_scope = scope_new(scope);
   jmp_buf trace_point;
+  List* args_dup = NULL;
   char* errmsg;
 
   if (setjmp(trace_point) == 0) {
     Atom* eval_result;
-    List* args_dup = list_duplicate(args);
+    args_dup = list_duplicate(args);
     eval_result = (*callback)(args_dup, function_scope, &errmsg, trace_point);
-    if (eval_result)
-      *result = eval_result;
+    *result = eval_result;
   } else {
     /* handle error here */
+    list_destroy(args_dup);
     scope_destroy(function_scope);
     return -3;
   }
 
+  list_destroy(args_dup);
   scope_destroy(function_scope);
   return 0;
 }
@@ -187,8 +190,9 @@ int function_call_userdefined(const Function* function,
                               const List* args,
                               Scope* scope,
                               Atom** result) {
-  Atom* const* arg_ptr;
+  Atom** arg_ptr;
   Atom* const* param_ptr;
+  List* args_dup;
   Scope* function_scope;
   Atom* eval_result;
 
@@ -200,12 +204,14 @@ int function_call_userdefined(const Function* function,
   }
 
   function_scope = scope_new(scope);
-  arg_ptr = args->items;
+  args_dup = list_duplicate(args);
+  arg_ptr = args_dup->items;
   param_ptr = function->parameter->items;
 
-  if (arg_ptr - args->items < args->n_items) {
+  while (arg_ptr != args_dup->items + args_dup->n_items) {
     char* sym_name;
     
+    atom_eval(*arg_ptr, function_scope);
     atom_get_token(*param_ptr, &sym_name);
     scope_set_symbol(function_scope, sym_name, *arg_ptr);
 
@@ -213,14 +219,15 @@ int function_call_userdefined(const Function* function,
     ++param_ptr;
   }
 
-
   if (list_eval(function->user_defined, function_scope, &eval_result) == 0) {
     *result = eval_result;
   } else {
+    list_destroy(args_dup);
     scope_destroy(function_scope);
     return -3;
   }
 
+  list_destroy(args_dup);
   scope_destroy(function_scope);
 
   return 0;

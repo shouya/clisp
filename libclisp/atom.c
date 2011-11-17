@@ -390,8 +390,11 @@ void atom_dereference_token(Atom* atom, const Scope* scope) {
 
 
 Atom* atom_parse_string(const char* str) {
-  const char* const str_end = str + strlen(str) - 1;
+  const char* str_end = str + strlen(str) - 1;
+
+  /* Trim */
   while (isspace(*str)) ++str;
+  while (isspace(*str_end) && str_end > str) --str_end;
 
   /* parse string */
   do {
@@ -407,7 +410,7 @@ Atom* atom_parse_string(const char* str) {
 
     strval = malloc(sizeof(char) * MAX_STRING_LENGTH);
     memcpy(strval, str + 1, str_end - str - 1);
-    strval[str_end - str] = '\0';
+    strval[str_end - str - 1] = '\0';
 
     ret = atom_new_string(strval);
     free(strval);
@@ -490,7 +493,6 @@ Atom* atom_parse_string(const char* str) {
       }
 
       if (p++ > str_end) {
-        printf("%p, %p, %s\n", p, str_end, str);
         free(strlst);
         strlst = NULL;
         break;
@@ -554,7 +556,7 @@ void atom_show(const Atom* atom, char** str) {
   } break;
   case ATOM_TYPE_BOOLEAN: {
     snprintf(buf, MAX_SHOW_BUFFER_SIZE, "%s",   \
-             *atom->boolean ? "t" : "nil");
+             *atom->boolean ? "T" : "NIL");
   } break;
   case ATOM_TYPE_STRING: {
     snprintf(buf, MAX_SHOW_BUFFER_SIZE, "\"%s\"", atom->string);

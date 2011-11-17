@@ -1,0 +1,23 @@
+(progn
+
+  (defun fib (x)
+    (cond ((= x 1) 1)
+          ((= x 0) 1)
+          (t (+ (fib (- x 1)) (fib (- x 2))))
+          )
+    )
+
+
+  (defun myloop (start end)
+    (cond ((= start end) 0)
+          (t (progn
+               (print (fib start))
+               (myloop (+ start 1) end)
+               )
+             )
+          )
+    )
+
+  (myloop 0 5)
+
+)
