@@ -213,6 +213,7 @@ int function_call_userdefined(const Function* function,
     
     atom_eval(*arg_ptr, function_scope);
     atom_get_token(*param_ptr, &sym_name);
+
     scope_set_symbol(function_scope, sym_name, *arg_ptr);
 
     ++arg_ptr;

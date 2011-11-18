@@ -21,6 +21,7 @@ void atom_destroy(Atom* a) {
 void atom_reset(Atom* a) {
   if (a->is_ref) {
     a->type = ATOM_TYPE_UNKNOWN;
+    a->is_ref = 0;
     return;
   }
 
@@ -60,7 +61,13 @@ void atom_reset(Atom* a) {
 
 Atom* atom_duplicate(const Atom* a) {
   if (a->is_ref) {
-    return atom_reference(a);
+    Atom* ret, *tmp = atom_reference(a);;
+    tmp->is_ref = 0;
+    ret = atom_duplicate(tmp);
+    tmp->is_ref = 1;
+    atom_destroy(tmp);
+
+    return ret;
   }
 
   switch (a->type) {

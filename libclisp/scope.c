@@ -13,7 +13,9 @@ struct _Scope {
 Scope* scope_new(Scope* parent) {
   Scope* s = calloc(1, sizeof(Scope));
   s->parent = parent;
-  s->symtab = htab_new(SCOPE_SYMBOL_HASH_SIZE, (HtabFreeHandler)&atom_destroy);
+  s->symtab = htab_new(SCOPE_SYMBOL_HASH_SIZE,
+                       (HtabFreeHandler)&atom_destroy,
+                       (HtabDupHandler) &atom_duplicate);
   return s;
 }
 
@@ -22,8 +24,8 @@ void scope_destroy(Scope* scope) {
   free(scope);
 }
 
-/* name will be duplicate but atom will not */
-void scope_set_symbol(Scope* s, const char* name, Atom* atom) {
+/* name will be duplicate but atom will duplicate too */
+void scope_set_symbol(Scope* s, const char* name, const Atom* atom) {
   htab_set(s->symtab, name, atom);
 }
 

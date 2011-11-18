@@ -49,7 +49,7 @@ all: libclisp clisp #clispi
 
 libclisp: $(LIB_OBJECTS)
 	cd $(SRC_DIR)
-	$(CC) $(CFLAGS) -shared -o $(DIR)/$(LIB_DIR)/$(LIBCLISP_OUT) $^ $(LIBS)
+	$(CC) $(CFLAGS) -shared -fPIC -o $(DIR)/$(LIB_DIR)/$(LIBCLISP_OUT) $^ $(LIBS)
 
 clisp: $(CLISP_OBJECTS)
 	$(CC) $(CFLAGS) -o $(BIN_DIR)/$@ $^ \

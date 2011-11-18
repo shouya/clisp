@@ -6,6 +6,7 @@
 
 typedef void (*HtabEach)(const char* k, void* v);
 typedef void (*HtabFreeHandler)(void* v);
+typedef void* (*HtabDupHandler)(const void* v);
 
 
 /* string to pointer hash */
@@ -17,13 +18,15 @@ struct _Htab {
   int n_nodes;
   int size;
   HtabFreeHandler free_handler;
+  HtabDupHandler dup_handler;
   HtabNode** nodes;
 };
 
-Htab* htab_new(int size, HtabFreeHandler free_handler);
+Htab* htab_new(int size,
+               HtabFreeHandler free_handler, HtabDupHandler dup_handler);
 void htab_destroy(Htab* htab);
 
-int htab_set(Htab* htab, const char* k, void* v); /* it won't duplicate v */
+int htab_set(Htab* htab, const char* k, const void* v); /* it won't duplicate v */
 int htab_del(Htab* htab, const char* k);
 
 int htab_find(const Htab* htab, const char* key, void** value);

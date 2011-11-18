@@ -15,13 +15,14 @@
 #define SCOPE_ADD_FUNC(scope, name, function)                           \
   do {                                                                  \
     Function* func;                                                     \
-    Atom* atom;                                                         \
     List* param = list_new();                                           \
+    Atom* atom;                                                         \
     func = function_new_internal(param, &internal_function_##function); \
     list_destroy(param);                                                \
     atom = atom_new_function(func);                                     \
     function_destroy(func);                                             \
     scope_set_symbol(scope, name, atom);                                \
+    atom_destroy(atom);                                                 \
   } while (0)
 
 /*typedef Atom* (*FunctionCallback)(List* args, Scope scope);*/
@@ -121,7 +122,7 @@ DECL(setq) {
   atom_get_token(args->items[0], &token);
   while (global_scope->parent != NULL) global_scope = global_scope->parent;
 
-  scope_set_symbol(scope->parent, token, atom_duplicate(args->items[1]));
+  scope_set_symbol(scope->parent, token, args->items[1]);
   return atom_new_boolean(1);
 }
 
@@ -146,6 +147,7 @@ DECL(defun) {
   }
 
   function_destroy(function);
+  atom_destroy(func_obj);
 
   return atom_new_boolean(1);
 }
@@ -272,7 +274,6 @@ DECL(let) {
       List* var_pair;
       while (var_iter != var_define->items + var_define->n_items) {
         char* token_name;
-        Atom* value;
         do {
           if (atom_get_list(*var_iter, &var_pair) == 0) break;
           if (var_pair->n_items == 2) break;
@@ -283,9 +284,8 @@ DECL(let) {
           return atom_new_boolean(0);
         } while (0);
 
-        value = atom_duplicate(var_pair->items[1]);
-        atom_eval(value, local_scope);
-        scope_set_symbol(local_scope, token_name, value);
+        atom_eval(var_pair->items[1], local_scope);
+        scope_set_symbol(local_scope, token_name, var_pair->items[1]);
 
         ++var_iter;
       }

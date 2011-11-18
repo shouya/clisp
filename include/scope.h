@@ -15,7 +15,7 @@ Scope* scope_new(Scope* parent);
 void scope_destroy(Scope* scope);
 
 /* name will be duplicate but atom will not */
-void scope_set_symbol(Scope* s, const char* name, Atom* atom);
+void scope_set_symbol(Scope* s, const char* name, const Atom* atom);
 
 /*
   return 0 if delete successfully, 1 if symbol don't exists.

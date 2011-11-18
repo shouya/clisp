@@ -1,9 +1,11 @@
 #include <hashtab.h>
 
-Htab* htab_new(int size, HtabFreeHandler free_handler) {
+Htab* htab_new(int size,
+               HtabFreeHandler free_handler, HtabDupHandler dup_handler) {
   Htab* htab = (Htab*)calloc(1, sizeof(Htab));
   htab->size = size;
   htab->free_handler = free_handler;
+  htab->dup_handler = dup_handler;
   htab->nodes = calloc(size, sizeof(HtabNode*));
   return htab;
 }
@@ -24,7 +26,7 @@ void htab_destroy(Htab* htab) {
   free(htab);
 }
 
-int htab_set(Htab* htab, const char* k, void* v) {
+int htab_set(Htab* htab, const char* k, const void* v) {
   unsigned long hash = htab_string_hash(k, htab->size);
 
   if (htab->nodes[hash] == NULL) {
@@ -38,7 +40,11 @@ int htab_set(Htab* htab, const char* k, void* v) {
     }
   }
 
-  htab->nodes[hash]->value = v;
+  if (htab->dup_handler) {
+    htab->nodes[hash]->value = (*htab->dup_handler)(v);
+  } else {
+    htab->nodes[hash]->value = (void*)v;
+  }
 
   return 0;
 }
@@ -84,13 +90,13 @@ void htab_foreach(Htab* htab, HtabEach each) {
 
 
 
-unsigned long htab_string_hash(const char* key, unsigned long hash_size) {
-  unsigned long hash = 1; /* hash algorithm from tinyvm */
-  const char* c;
+unsigned long htab_string_hash(const char* str, unsigned long hash_size) {
+  /* sdbm algorithm */
+  unsigned long hash = 0;
+  int c;
 
-  for (c = key; *c; ++c) {
-    hash += (hash << *c) - *c;
-  }
+  while ((c = *str++) != 0)
+    hash = c + (hash << 6) + (hash << 16) - hash;
 
   return hash % hash_size;
 }
